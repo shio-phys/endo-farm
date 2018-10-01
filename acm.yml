@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  NakedDomain:
+    Type: 'String'
+    Default: 'endo.farm'
+
+
+Resources:
+  CertificateManagerCertificateEndoFarm:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref NakedDomain
+      ValidationMethod: 'DNS'

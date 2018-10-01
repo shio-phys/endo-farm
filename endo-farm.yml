@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  NativeDomain:
+    Type: 'String'
+    Default: 'endo.farm'
+  DNSRecordPairNativeDomain:
+    Type: 'CommaDelimitedList'
+    Default: '_3e88d7da4d0f677e93f37ad46d4f187d.endo.farm.,_c32230d10f35c14e671bc81b52476787.tljzshvwok.acm-validations.aws.'
+  AcmCertificateArnEndoFarm:
+    Type: 'String'
+    Default: 'arn:aws:acm:us-east-1:558587506234:certificate/87adda9a-15c1-4f50-9d07-e9867c31650f'
+
+Resources:
+  Route53HostedZoneEndoFarm:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      Name: !Ref NativeDomain
+
+  Route53RecordSetCNAMENativeDomain:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref Route53HostedZoneEndoFarm
+      Name: !Select [0, !Ref DNSRecordPairNativeDomain]
+      ResourceRecords:
+        - !Select [1, !Ref DNSRecordPairNativeDomain]
+      TTL: 60
+      Type: 'CNAME'
+
+  S3BucketEndoFarm:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: Private
+      BucketName: !Ref NativeDomain
+      WebsiteConfiguration:
+        IndexDocument: 'index.html'
+        RoutingRules:
+          - RedirectRule:
+              HostName: 'www.facebook.com'
+              ReplaceKeyWith: 'mari.endou.75'
+              HttpRedirectCode: '302'
+
+  CloudFrontDistributionEndoFarm:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Origins:
+          - Id: !Sub S3-${NativeDomain}
+            DomainName: !Select [1, !Split ['://', !GetAtt S3BucketEndoFarm.WebsiteURL] ]
+            CustomOriginConfig:
+              OriginProtocolPolicy: 'http-only'
+        Aliases:
+          - !Ref NativeDomain
+        DefaultCacheBehavior:
+          DefaultTTL: 0
+          ForwardedValues:
+            QueryString: false
+          MaxTTL: 0
+          MinTTL: 0
+          TargetOriginId: !Sub S3-${NativeDomain}
+          ViewerProtocolPolicy: 'allow-all'
+        HttpVersion: 'http2'
+        IPV6Enabled: true
+        ViewerCertificate:
+          AcmCertificateArn: !Ref AcmCertificateArnEndoFarm
+          MinimumProtocolVersion: 'TLSv1.1_2016'
+          SslSupportMethod: 'sni-only'
+
+  Route53RecordSetANativeDomain:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref Route53HostedZoneEndoFarm
+      Name: !Ref NativeDomain
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistributionEndoFarm.DomainName
+        HostedZoneId: 'Z2FDTNDATAQYW2'
+      Type: 'A'
